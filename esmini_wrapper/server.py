@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import grpc
 from concurrent import futures
 import os
@@ -8,16 +10,7 @@ from google.protobuf.json_format import MessageToDict
 from sbsvf_api import sim_server_pb2, sim_server_pb2_grpc
 from sbsvf_api.pong_pb2 import Pong
 from sbsvf_api.empty_pb2 import Empty
-from sbsvf_api.scenario_pb2 import ScenarioPack
-from sbsvf_api.object_pb2 import (
-    ObjectState,
-    ObjectKinematic,
-    Shape,
-    ShapeType,
-    RoadObjectType,
-)
-from sbsvf_api.control_pb2 import CtrlCmd, CtrlMode
-
+from esmini import EsminiAdapter
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -29,26 +22,44 @@ logging.basicConfig(
 
 class EsminiService(sim_server_pb2_grpc.SimServerServicer):
     def __init__(self):
-        pass
+        self._esmini = None
 
     def Ping(self, request, context):
         logger.info(f"Received ping from client: {context.peer()}")
         return Pong(msg="Esmini alive")
 
     def Init(self, request, context):
-        pass
+        cfg = request.config.config
+        self.config = MessageToDict(cfg)
+        self.output_dir = request.output_dir.path
+        self.dt = request.dt
+
+        self._esmini = EsminiAdapter(self.output_dir, self.config)
+        return sim_server_pb2.SimServerMessages.InitResponse(
+            success=True, msg="Esmini initialized"
+        )
 
     def Reset(self, request, context):
-        pass
+        self.output_dir = request.output_dir.path
+        sps = request.scenario_pack
+        params = request.params
+        objects = self._esmini.reset(self.output_dir, sps, params)
+        return sim_server_pb2.SimServerMessages.ResetResponse(objects=objects)
 
     def Step(self, request, context):
-        pass
+        ctrl_cmd = request.ctrl_cmd
+        timestamp_ns = request.timestamp_ns
+        objects = self._esmini.step(ctrl_cmd, timestamp_ns)
+        return sim_server_pb2.SimServerMessages.StepResponse(objects=objects)
 
     def Stop(self, request, context):
-        pass
+        self._esmini.stop()
+        return Empty()
 
     def ShouldQuit(self, request, context):
-        pass
+        return sim_server_pb2.SimServerMessages.ShouldQuitResponse(
+            should_quit=self._esmini.should_quit()
+        )
 
 
 def serve():
