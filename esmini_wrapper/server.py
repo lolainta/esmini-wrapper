@@ -27,10 +27,6 @@ logging.basicConfig(
 )
 
 
-def _clamp(value: float, min_value: float, max_value: float) -> float:
-    return max(min_value, min(max_value, value))
-
-
 class EsminiService(sim_server_pb2_grpc.SimServerServicer):
     def __init__(self):
         pass
