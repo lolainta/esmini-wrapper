@@ -15,6 +15,11 @@ from sbsvf_api.object_pb2 import (
 from sbsvf_api.control_pb2 import CtrlCmd, CtrlMode
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
 
 class SEScenarioObjectState(ct.Structure):
@@ -159,7 +164,11 @@ class EsminiAdapter:
         record = int(self.cfg.get("record", 0))
 
         if "log_file_path" in self.cfg:
-            log_file_path = self._output_dir / self.cfg["log_file_path"]
+            # log_file_path = self._output_dir / self.cfg["log_file_path"]
+            log_file_path = Path(f"/mnt/output/{self.cfg['log_file_path']}").resolve()
+            logger.info(
+                f'Setting esmini log file path to: {log_file_path} (from cfg "log_file_path")'
+            )
             self.se.SE_SetLogFilePath(str(log_file_path).encode())
         else:
             logger.info("No log_file_path specified; using default esmini_log.txt")
@@ -182,7 +191,7 @@ class EsminiAdapter:
             self.se.SE_SetOptionPersistent(b"disable_stdout")
 
         if self.cfg.get("dat_file_path", None) is not None:
-            dat_file_path = self._output_dir / self.cfg["dat_file_path"]
+            dat_file_path = Path(f"/mnt/output/{self.cfg['dat_file_path']}")
             logger.info(f"Setting esmini dat file path: {dat_file_path}")
             self.se.SE_SetDatFilePath(str(dat_file_path).encode())
 
@@ -554,12 +563,14 @@ class EsminiAdapter:
             self._params_ptr,
         )
         use_viewer, threads, record = self._setup_esmini_opts()
-
-        map_path = Path(sps.maps["xodr_path"].path)
+        map_name = sps.map_name
+        map_path = Path(f"/mnt/map/xodr/{map_name}.xodr").resolve()
         self.se.SE_AddPath(str(map_path.parent).encode())
         disable_controller = 1  # 0 to enable built-in controllers, 1 to disable
+        xosc_name = sps.name
+        xosc_path = Path(f"/mnt/scenario/{xosc_name}.xosc").resolve()
         ret = self.se.SE_Init(
-            str(sps.scenarios["xosc"].path).encode(),
+            str(xosc_path).encode(),
             disable_controller,
             use_viewer,
             threads,

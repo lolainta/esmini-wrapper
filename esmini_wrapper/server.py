@@ -33,6 +33,7 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
         self.config = MessageToDict(cfg)
         self.output_dir = request.output_dir.path
         self.dt = request.dt
+        pprint(self.config)
 
         self._esmini = EsminiAdapter(self.output_dir, self.config)
         return sim_server_pb2.SimServerMessages.InitResponse(
