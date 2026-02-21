@@ -555,11 +555,14 @@ class EsminiAdapter:
         )
         use_viewer, threads, record = self._setup_esmini_opts()
 
-        map_path = Path(sps.maps["xodr_path"].path)
+        map_name = sps.map_name
+        map_path = Path(f"/mnt/map/xodr/{map_name}.xodr")
         self.se.SE_AddPath(str(map_path.parent).encode())
         disable_controller = 1  # 0 to enable built-in controllers, 1 to disable
+        scenario_name = Path(sps.scenarios["xosc"].path).stem
+        scenario_path = f"/mnt/scenario/{scenario_name}.xosc"
         ret = self.se.SE_Init(
-            str(sps.scenarios["xosc"].path).encode(),
+            str(scenario_path).encode(),
             disable_controller,
             use_viewer,
             threads,
