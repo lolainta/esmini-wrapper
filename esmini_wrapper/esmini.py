@@ -1,4 +1,6 @@
 import logging
+import os
+from time import time
 from typing import Any, Optional
 from pathlib import Path
 from math import pi
@@ -81,26 +83,29 @@ class Vehicle:
         if ctrl.mode == CtrlMode.NONE:
             return
         elif ctrl.mode == CtrlMode.THROTTLE_STEER:
-            pedal = int(ctrl.payload.get("pedal", 0))
-            wheel = int(ctrl.payload.get("wheel", 0))
+            pedal = ctrl.payload["pedal"]
+            wheel = ctrl.payload["wheel"]
             self._se.SE_SimpleVehicleControlBinary(self.sv_handle, dt_s, pedal, wheel)
             # Update vehicle state
             self._se.SE_SimpleVehicleGetState(self.sv_handle, ct.byref(self.vh_state))
 
-        # elif ctrl.mode == CtrlMode.THROTTLE_STEER_BREAK:
-        #     throttle = float(ctrl.payload.get("throttle", 0.0))
-        #     steer = float(ctrl.payload.get("steer", 0.0))
-        #     brake = float(ctrl.payload.get("brake", 0.0))
+        elif ctrl.mode == CtrlMode.THROTTLE_STEER_BREAK:
+            # throttle = float(ctrl.payload.get("throttle", 0.0))
+            # steer = float(ctrl.payload.get("steer", 0.0))
+            # brake = float(ctrl.payload.get("brake", 0.0))
 
-        #     final_throttle = (
-        #         throttle - brake
-        #     )  # Simple way to combine throttle and brake
+            throttle = ctrl.payload["throttle"]
+            steer = ctrl.payload["steer"]
+            brake = ctrl.payload["brake"]
+            final_throttle = (
+                throttle - brake
+            )  # Simple way to combine throttle and brake
 
-        #     self._se.SE_SimpleVehicleControlAnalog(
-        #         self.sv_handle, dt_s, final_throttle, steer
-        #     )
-        #     # Update vehicle state
-        #     self._se.SE_SimpleVehicleGetState(self.sv_handle, ct.byref(self.vh_state))
+            self._se.SE_SimpleVehicleControlAnalog(
+                self.sv_handle, dt_s, final_throttle, steer
+            )
+            # Update vehicle state
+            self._se.SE_SimpleVehicleGetState(self.sv_handle, ct.byref(self.vh_state))
 
         elif ctrl.mode == CtrlMode.ACKERMANN:
             # target_speed = ctrl.payload.get("speed", self.vh_state.speed)
@@ -169,6 +174,7 @@ class EsminiAdapter:
             logger.info(
                 f'Setting esmini log file path to: {log_file_path} (from cfg "log_file_path")'
             )
+            os.makedirs(log_file_path.parent, exist_ok=True)
             self.se.SE_SetLogFilePath(str(log_file_path).encode())
         else:
             logger.info("No log_file_path specified; using default esmini_log.txt")
@@ -345,7 +351,7 @@ class EsminiAdapter:
 
         se.SE_GetSimTimeStep.restype = ct.c_float
 
-        # SE_DLL_API float SE_GetSimulationTime();
+        # SE_DLL_API float SE_GetSimulationTime(); 
         se.SE_GetSimulationTime.restype = ct.c_float
 
         # SE_DLL_API int SE_Init(const char *oscFilename, int disable_ctrls, int use_viewer, int threads, int record);
@@ -373,12 +379,6 @@ class EsminiAdapter:
         pass
 
     def step(self, ctrl: CtrlCmd, time_stamp_ns: int):
-        # if self.sim_state == SimulatorState.AV_CONNECTING:
-        #     if ctrl.payload.get("pedal", 0) != 0 or ctrl.payload.get("wheel", 0) != 0:
-        #         self.sim_state = SimulatorState.RUNNING
-        #         logger.info("AV engaged.")
-        #     return None
-
         # ctrl = Ctrl.from_pb(ctrl)
         dt_s = (time_stamp_ns - self._time_ns) / 1e9
         self._time_ns = time_stamp_ns
@@ -387,7 +387,6 @@ class EsminiAdapter:
 
         # Update vehicle control
         self.ego_car.apply_control(ctrl, dt_s)
-
         obj_id = se.SE_GetId(0)
         se.SE_ReportObjectPosXYH(
             obj_id,
@@ -405,9 +404,7 @@ class EsminiAdapter:
             obj_id,
             self.ego_car.vh_state.speed,
         )
-
         se.SE_StepDT(dt_s)
-
         # Update object state
         for i in range(0, self.obj_count):
             # Get object state
@@ -452,6 +449,7 @@ class EsminiAdapter:
             self.objects[i].kinematic.CopyFrom(kinematic)
 
         # objects = [i.to_pb() for i in self.objects]
+
         return self.objects
 
     def stop(self):
@@ -524,9 +522,6 @@ class EsminiAdapter:
 
         # 這個 return 給自己用就好，C callback 是 void，不會用到
         return 0
-
-    def _get_parameter(self, sps: ScenarioPack) -> dict[str, Any]:
-        self
 
     def reset(self, output_dir: str, sps: ScenarioPack, params: Optional[dict] = None):
         self._output_dir = Path(output_dir)
