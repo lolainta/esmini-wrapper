@@ -174,7 +174,6 @@ class EsminiAdapter:
             logger.info(
                 f'Setting esmini log file path to: {log_file_path} (from cfg "log_file_path")'
             )
-            print(f"==== Esmini log file path: {log_file_path} ====")
             self.se.SE_SetLogFilePath(str(log_file_path).encode())
         else:
             logger.info("No log_file_path specified; using default esmini_log.txt")
@@ -187,7 +186,6 @@ class EsminiAdapter:
 
         if "window" in self.cfg:
             win_cfg = self.cfg["window"]  # ["x", "y", "width", "height"]
-            logger.info(f"Setting esmini window position and size: {win_cfg}")
             self.se.SE_SetWindowPosAndSize(
                 int(win_cfg[0]), int(win_cfg[1]), int(win_cfg[2]), int(win_cfg[3])
             )

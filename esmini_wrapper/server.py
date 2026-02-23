@@ -30,22 +30,23 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
 
     def Init(self, request, context):
         cfg = request.config.config
-        self.config = MessageToDict(cfg)
-        self.output_dir = request.output_dir.path
+        config = MessageToDict(cfg)
+        output_dir = request.output_dir.path
         self.dt = request.dt
+
         if self._esmini is None:
-            self._esmini = EsminiAdapter(self.output_dir, self.config)
-        pprint(self.config)
+            self._esmini = EsminiAdapter(output_dir, config)
+        pprint(config)
 
         return sim_server_pb2.SimServerMessages.InitResponse(
             success=True, msg="Esmini initialized"
         )
 
     def Reset(self, request, context):
-        self.output_dir = request.output_dir.path
+        output_dir = request.output_dir.path
         sps = request.scenario_pack
         params = request.params
-        objects = self._esmini.reset(self.output_dir, sps, params)
+        objects = self._esmini.reset(output_dir, sps, params)
         return sim_server_pb2.SimServerMessages.ResetResponse(objects=objects)
 
     def Step(self, request, context):
