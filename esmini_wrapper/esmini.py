@@ -148,8 +148,9 @@ TYPE_MAP = {
 
 
 class EsminiAdapter:
-    def __init__(self, output_dir: str, cfg: dict):
-        self._output_dir = Path(output_dir)
+    def __init__(self, output_base: str, cfg: dict):
+        self._output_base = Path(output_base)
+        self._output_dir = self._output_base / "concrete"
         self._time_ns = 0
         self.cfg = cfg
         self.esmini_home = self.cfg.get("esmini_home", "/opt/esmini/")
@@ -173,6 +174,7 @@ class EsminiAdapter:
             logger.info(
                 f'Setting esmini log file path to: {log_file_path} (from cfg "log_file_path")'
             )
+            print(f"==== Esmini log file path: {log_file_path} ====")
             self.se.SE_SetLogFilePath(str(log_file_path).encode())
         else:
             logger.info("No log_file_path specified; using default esmini_log.txt")
@@ -523,8 +525,10 @@ class EsminiAdapter:
         # 這個 return 給自己用就好，C callback 是 void，不會用到
         return 0
 
-    def reset(self, output_dir: str, sps: ScenarioPack, params: Optional[dict] = None):
-        self._output_dir = Path(output_dir)
+    def reset(
+        self, output_related: str, sps: ScenarioPack, params: Optional[dict] = None
+    ):
+        self._output_dir = self._output_base / Path(output_related)
 
         self.stop()
 
