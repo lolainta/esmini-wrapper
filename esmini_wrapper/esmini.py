@@ -169,12 +169,10 @@ class EsminiAdapter:
         record = int(self.cfg.get("record", 0))
 
         if "log_file_path" in self.cfg:
-            # log_file_path = self._output_dir / self.cfg["log_file_path"]
-            log_file_path = Path(f"/mnt/output/{self.cfg['log_file_path']}").resolve()
+            log_file_path = Path(self._output_dir) / self.cfg["log_file_path"]
             logger.info(
                 f'Setting esmini log file path to: {log_file_path} (from cfg "log_file_path")'
             )
-            os.makedirs(log_file_path.parent, exist_ok=True)
             self.se.SE_SetLogFilePath(str(log_file_path).encode())
         else:
             logger.info("No log_file_path specified; using default esmini_log.txt")
@@ -197,7 +195,7 @@ class EsminiAdapter:
             self.se.SE_SetOptionPersistent(b"disable_stdout")
 
         if self.cfg.get("dat_file_path", None) is not None:
-            dat_file_path = Path(f"/mnt/output/{self.cfg['dat_file_path']}")
+            dat_file_path = Path(self._output_dir) / self.cfg["dat_file_path"]
             logger.info(f"Setting esmini dat file path: {dat_file_path}")
             self.se.SE_SetDatFilePath(str(dat_file_path).encode())
 
@@ -351,7 +349,7 @@ class EsminiAdapter:
 
         se.SE_GetSimTimeStep.restype = ct.c_float
 
-        # SE_DLL_API float SE_GetSimulationTime(); 
+        # SE_DLL_API float SE_GetSimulationTime();
         se.SE_GetSimulationTime.restype = ct.c_float
 
         # SE_DLL_API int SE_Init(const char *oscFilename, int disable_ctrls, int use_viewer, int threads, int record);
@@ -453,7 +451,9 @@ class EsminiAdapter:
         return self.objects
 
     def stop(self):
+        self.se.SE_UnsetOption(b"logfile_path")
         self.se.SE_Close()
+
         if self.ego_car is not None:
             self.se.SE_SimpleVehicleDelete(self.ego_car.sv_handle)
             self.ego_car = None

@@ -13,17 +13,22 @@ RUN <<EOF
     rm -rf /var/lib/apt/lists/*
 EOF
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libxrandr2 libxinerama1 libxi6 libxxf86vm1 libgtk2.0-0 \
+    xvfb ca-certificates mesa-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN <<EOF
     cmake -B build/ -S . \
     -DENABLE_COLORED_DIAGNOSTICS=ON \
     -DENABLE_WARNINGS_AS_ERRORS=ON \
-    -DDOWNLOAD_EXTERNALS=OFF \
+    -DDOWNLOAD_EXTERNALS=ON \
     -DENABLE_CCACHE=ON \
     -DBUILD_EXAMPLES=OFF \
     -DUSE_IMPLOT=OFF \
-    -DUSE_OSG=OFF -DUSE_OSI=OFF -DUSE_SUMO=OFF -DUSE_GTEST=OFF
+    -DUSE_OSG=ON -DUSE_OSI=OFF -DUSE_SUMO=OFF -DUSE_GTEST=OFF
     cmake --build build/ --config Release --target install -j
 EOF
 
@@ -40,7 +45,7 @@ EOF
 WORKDIR /app
 COPY ./pyproject.toml .
 COPY ./uv.lock .
-RUN uv sync --locked
+RUN uv sync
 COPY . .
 
 ENV PORT=50051
