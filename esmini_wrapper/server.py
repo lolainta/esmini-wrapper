@@ -7,9 +7,9 @@ import logging
 
 from google.protobuf.json_format import MessageToDict
 
-from sbsvf_api import sim_server_pb2, sim_server_pb2_grpc
-from sbsvf_api.pong_pb2 import Pong
-from sbsvf_api.empty_pb2 import Empty
+from pisa_api import sim_server_pb2, sim_server_pb2_grpc
+from pisa_api.pong_pb2 import Pong
+from pisa_api.empty_pb2 import Empty
 from esmini import EsminiAdapter
 
 logger = logging.getLogger(__name__)

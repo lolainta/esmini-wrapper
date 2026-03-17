@@ -6,15 +6,15 @@ from pathlib import Path
 from math import pi
 import ctypes as ct
 
-from sbsvf_api.scenario_pb2 import ScenarioPack
-from sbsvf_api.object_pb2 import (
+from pisa_api.scenario_pb2 import ScenarioPack
+from pisa_api.object_pb2 import (
     ObjectState,
     ObjectKinematic,
     Shape,
     ShapeType,
     RoadObjectType,
 )
-from sbsvf_api.control_pb2 import CtrlCmd, CtrlMode
+from pisa_api.control_pb2 import CtrlCmd, CtrlMode
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
