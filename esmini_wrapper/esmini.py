@@ -1,10 +1,7 @@
-import logging
-import os
-from time import time
-from typing import Any, Optional
-from pathlib import Path
-from math import pi
 import ctypes as ct
+import logging
+from pathlib import Path
+from typing import Any, Optional
 
 from pisa_api.scenario_pb2 import ScenarioPack
 from pisa_api.object_pb2 import (

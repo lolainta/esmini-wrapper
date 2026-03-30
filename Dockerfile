@@ -1,9 +1,7 @@
 FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /opt/esmini
-
-ADD https://github.com/esmini/esmini.git .
+RUN useradd -m ubuntu
 
 RUN <<EOF
     apt-get update
@@ -14,6 +12,21 @@ RUN <<EOF
 EOF
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN <<EOF
+    apt-get update
+    apt-get -y full-upgrade
+    apt-get install -y --no-install-recommends \
+    ca-certificates
+    rm -rf /var/lib/apt/lists/*
+EOF
+
+USER ubuntu
+
+WORKDIR /opt/esmini
+RUN chown ubuntu:ubuntu /opt/esmini
+
+ADD --chown=ubuntu:ubuntu https://github.com/esmini/esmini.git .
 
 RUN <<EOF
     cmake -B build/ -S . \
@@ -28,14 +41,6 @@ RUN <<EOF
 EOF
 
 RUN rm -f config.yml
-
-RUN <<EOF
-    apt-get update
-    apt-get -y full-upgrade
-    apt-get install -y --no-install-recommends \
-    ca-certificates
-    rm -rf /var/lib/apt/lists/*
-EOF
 
 WORKDIR /app
 COPY ./pyproject.toml .

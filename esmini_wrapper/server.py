@@ -1,5 +1,6 @@
 from pprint import pprint
 
+import asyncio
 import grpc
 from concurrent import futures
 import os
@@ -25,10 +26,11 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
         self._esmini = None
 
     def Ping(self, request, context):
-        logger.info(f"Received ping from client: {context.peer()}")
+        logger.debug(f"Received ping from client: {context.peer()}")
         return Pong(msg="Esmini alive")
 
     def Init(self, request, context):
+        logger.debug(f"Received Init request from client: {context.peer()}")
         cfg = request.config.config
         config = MessageToDict(cfg)
         output_dir = request.output_dir.path
@@ -43,6 +45,7 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
         )
 
     def Reset(self, request, context):
+        logger.debug(f"Received Reset request from client: {context.peer()}")
         output_dir = request.output_dir.path
         sps = request.scenario_pack
         params = request.params
@@ -50,12 +53,14 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
         return sim_server_pb2.SimServerMessages.ResetResponse(objects=objects)
 
     def Step(self, request, context):
+        logger.debug(f"Received Step request with timestamp_ns={request.timestamp_ns}")
         ctrl_cmd = request.ctrl_cmd
         timestamp_ns = request.timestamp_ns
         objects = self._esmini.step(ctrl_cmd, timestamp_ns)
         return sim_server_pb2.SimServerMessages.StepResponse(objects=objects)
 
     def Stop(self, request, context):
+        logger.debug(f"Received Stop request from client: {context.peer()}")
         self._esmini.stop()
         return Empty()
 
@@ -66,7 +71,14 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
 
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=4),
+        options=[
+            ("grpc.keepalive_time_ms", 10000),
+            ("grpc.keepalive_timeout_ms", 5000),
+            ("grpc.keepalive_permit_without_calls", True),
+        ],
+    )
 
     sim_server_pb2_grpc.add_SimServerServicer_to_server(EsminiService(), server)
 
@@ -75,12 +87,12 @@ def serve():
     server.add_insecure_port(f"[::]:{PORT}")
     server.start()
 
-    print(f"gRPC server running on port {PORT}")
+    logger.info(f"Esmini gRPC server started on port {PORT}. Waiting for clients...")
 
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
-        print("Shutting down gRPC server...")
+        logger.info("Shutting down Esmini gRPC server...")
         server.stop(0)
 
 
