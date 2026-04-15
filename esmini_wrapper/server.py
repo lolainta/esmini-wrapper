@@ -41,10 +41,10 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
             )
         try:
             self._esmini.init(config, output_base, scenario)
-        except Exception as e:
-            logger.error(f"Failed to initialize Esmini: {e}")
+        except Exception:
+            logger.exception("Failed to initialize Esmini")
             return sim_server_pb2.SimServerMessages.InitResponse(
-                success=False, msg=f"Failed to initialize Esmini: {e}"
+                success=False, msg="Failed to initialize Esmini"
             )
         return sim_server_pb2.SimServerMessages.InitResponse(
             success=True, msg="Esmini initialized"
