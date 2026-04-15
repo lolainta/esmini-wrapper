@@ -506,6 +506,8 @@ class EsminiAdapter:
         return self.objects
 
     def step(self, ctrl: CtrlCmd, time_stamp_ns: int):
+        if not self.initialized:
+            raise RuntimeError("EsminiAdapter not initialized. Call init() first.")
         # ctrl = Ctrl.from_pb(ctrl)
         dt_s = (time_stamp_ns - self._time_ns) / 1e9
         self._time_ns = time_stamp_ns
@@ -580,6 +582,8 @@ class EsminiAdapter:
         return self.objects
 
     def stop(self):
+        if not self.initialized:
+            return
         self.se.SE_UnsetOption(b"logfile_path")
         self.se.SE_Close()
 
@@ -654,4 +658,6 @@ class EsminiAdapter:
 
     # define a function returning if the simulator need to stop
     def should_quit(self):
+        if not self.initialized:
+            return False
         return self.se.SE_GetQuitFlag()

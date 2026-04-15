@@ -66,17 +66,40 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
 
     def Step(self, request, context):
         logger.debug(f"Received Step request with timestamp_ns={request.timestamp_ns}")
+        if not self._esmini.initialized:
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details("Esmini adapter not initialized. Call Init and Reset first.")
+            return sim_server_pb2.SimServerMessages.StepResponse()
         ctrl_cmd = request.ctrl_cmd
         timestamp_ns = request.timestamp_ns
-        objects = self._esmini.step(ctrl_cmd, timestamp_ns)
+        try:
+            objects = self._esmini.step(ctrl_cmd, timestamp_ns)
+        except RuntimeError as e:
+            logger.error(f"Failed to step Esmini: {e}")
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details(f"Failed to step Esmini: {e}")
+            return sim_server_pb2.SimServerMessages.StepResponse()
         return sim_server_pb2.SimServerMessages.StepResponse(objects=objects)
 
     def Stop(self, request, context):
         logger.debug(f"Received Stop request from client: {context.peer()}")
-        self._esmini.stop()
+        if not self._esmini.initialized:
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details("Esmini adapter not initialized. Call Init and Reset first.")
+            return Empty()
+        try:
+            self._esmini.stop()
+        except Exception as e:
+            logger.error(f"Failed to stop Esmini: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Failed to stop Esmini: {e}")
         return Empty()
 
     def ShouldQuit(self, request, context):
+        if not self._esmini.initialized:
+            return sim_server_pb2.SimServerMessages.ShouldQuitResponse(
+                should_quit=False
+            )
         return sim_server_pb2.SimServerMessages.ShouldQuitResponse(
             should_quit=self._esmini.should_quit()
         )
