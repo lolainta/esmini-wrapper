@@ -4,7 +4,6 @@ import grpc
 from concurrent import futures
 import logging
 import os
-from time import sleep
 
 from google.protobuf.json_format import MessageToDict
 
