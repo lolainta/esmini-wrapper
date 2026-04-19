@@ -35,7 +35,7 @@ class EsminiService(sim_server_pb2_grpc.SimServerServicer):
         output_base = request.output_dir.path
         pprint(config)
         scenario = request.scenario
-        if scenario.format != "OpenScenario1":
+        if scenario.format != "open_scenario1":
             logger.error(f"Unsupported scenario format: {scenario.format}")
             return sim_server_pb2.SimServerMessages.InitResponse(
                 success=False, msg=f"Unsupported scenario format: {scenario.format}"
