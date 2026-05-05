@@ -548,9 +548,7 @@ class EsminiAdapter:
             )
 
             if ret_state != 0:
-                logger.warning(
-                    f"SE_GetObjectState failed for object id {i} (ret={ret_state})"
-                )
+                logger.warning(f"SE_GetObjectState failed for object id {i} (ret={ret_state})")
                 continue
 
             kinematic = ObjectKinematic(
