@@ -3,6 +3,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from google.protobuf.struct_pb2 import Struct
+from pisa_api.collision_pb2 import CollisionInfo
 from pisa_api.control_pb2 import CtrlCmd, CtrlMode
 from pisa_api.object_pb2 import (
     ObjectKinematic,
@@ -11,6 +13,7 @@ from pisa_api.object_pb2 import (
     Shape,
     ShapeType,
 )
+from pisa_api.runtime_frame_pb2 import RuntimeFrame
 from pisa_api.scenario_pb2 import Scenario, ScenarioPack
 
 logger = logging.getLogger(__name__)
@@ -347,6 +350,22 @@ class EsminiAdapter:
         se.SE_GetNumberOfObjects.argtypes = []
         se.SE_GetNumberOfObjects.restype = ct.c_int
 
+        # SE_DLL_API int SE_GetId(int index);
+        se.SE_GetId.argtypes = [ct.c_int]
+        se.SE_GetId.restype = ct.c_int
+
+        # SE_DLL_API void SE_CollisionDetection(bool mode);
+        se.SE_CollisionDetection.argtypes = [ct.c_bool]
+        se.SE_CollisionDetection.restype = None
+
+        # SE_DLL_API int SE_GetObjectNumberOfCollisions(int object_id);
+        se.SE_GetObjectNumberOfCollisions.argtypes = [ct.c_int]
+        se.SE_GetObjectNumberOfCollisions.restype = ct.c_int
+
+        # SE_DLL_API int SE_GetObjectCollision(int object_id, int index);
+        se.SE_GetObjectCollision.argtypes = [ct.c_int, ct.c_int]
+        se.SE_GetObjectCollision.restype = ct.c_int
+
         se.SE_GetSimTimeStep.restype = ct.c_float
 
         # SE_DLL_API float SE_GetSimulationTime();
@@ -384,6 +403,57 @@ class EsminiAdapter:
             raise FileNotFoundError(f"esmini shared library not found at: {lib_path}")
         self.se = ct.CDLL(str(lib_path))  # Linux
         self._setup_function_signatures()
+
+    def _collision_detection_enabled(self) -> bool:
+        return bool(
+            self.cfg.get(
+                "collision_detection",
+                self.cfg.get("enable_collision_detection", True),
+            )
+        )
+
+    def _set_collision_detection(self, enabled: bool) -> None:
+        self.se.SE_CollisionDetection(enabled)
+
+    def _collect_collision_info(self) -> list[CollisionInfo]:
+        collisions: list[CollisionInfo] = []
+        seen_pairs: set[tuple[int, int]] = set()
+
+        for object_index in range(self.obj_count):
+            object_id = self.se.SE_GetId(object_index)
+            collision_count = self.se.SE_GetObjectNumberOfCollisions(object_id)
+            if collision_count <= 0:
+                continue
+
+            for collision_index in range(collision_count):
+                other_object_id = self.se.SE_GetObjectCollision(object_id, collision_index)
+                if other_object_id < 0 or other_object_id == object_id:
+                    continue
+
+                actor_a, actor_b = sorted((object_id, other_object_id))
+                pair = (actor_a, actor_b)
+                if pair in seen_pairs:
+                    continue
+                seen_pairs.add(pair)
+
+                details = Struct()
+                details.update(
+                    {
+                        "source": "esmini",
+                        "object_id_a": actor_a,
+                        "object_id_b": actor_b,
+                    }
+                )
+                collisions.append(
+                    CollisionInfo(
+                        occurred=True,
+                        actor_a=actor_a,
+                        actor_b=actor_b,
+                        details=details,
+                    )
+                )
+
+        return collisions
 
     def reset(self, output_related: str, sps: ScenarioPack, params: dict | None = None):
         self._output_dir = self._output_base / Path(output_related)
@@ -435,6 +505,8 @@ class EsminiAdapter:
         )
         if ret != 0:
             raise RuntimeError(f"esmini SE_Init failed with code {ret}")
+
+        self._set_collision_detection(self._collision_detection_enabled())
 
         self.obj_count = self.se.SE_GetNumberOfObjects()
         self.objects = []
@@ -492,8 +564,14 @@ class EsminiAdapter:
             speed=float(self.objects[0].kinematic.speed),
         )
 
-        # objects = [i.to_pb() for i in self.objects]
-        return self.objects
+        collisions = self._collect_collision_info()
+        runtime_frame = RuntimeFrame(
+            sim_time_ns=self._time_ns,
+            objects=self.objects,
+            collision=collisions,
+        )
+
+        return runtime_frame
 
     def step(self, ctrl: CtrlCmd, time_stamp_ns: int):
         # ctrl = Ctrl.from_pb(ctrl)
@@ -564,11 +642,20 @@ class EsminiAdapter:
             )
             self.objects[i].kinematic.CopyFrom(kinematic)
 
-        # objects = [i.to_pb() for i in self.objects]
+        collisions = self._collect_collision_info()
+        runtime_frame = RuntimeFrame(
+            sim_time_ns=self._time_ns,
+            objects=self.objects,
+            collision=collisions,
+        )
 
-        return self.objects
+        return runtime_frame
 
     def stop(self):
+        if self.se is None:
+            return
+
+        self._set_collision_detection(False)
         self.se.SE_UnsetOption(b"logfile_path")
         self.se.SE_Close()
 

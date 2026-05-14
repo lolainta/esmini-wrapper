@@ -53,13 +53,13 @@ class EsminiService(BaseSimServer):
         sps = request.scenario_pack
         params = request.params
         try:
-            objects = self._esmini.reset(output_related, sps, params)
+            runtime_frame = self._esmini.reset(output_related, sps, params)
         except RuntimeError as e:
             logger.error(f"Failed to reset Esmini: {e}")
             context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             context.set_details(f"Failed to reset Esmini: {e}")
             return sim_server_pb2.SimServerMessages.ResetResponse()
-        return sim_server_pb2.SimServerMessages.ResetResponse(objects=objects)
+        return sim_server_pb2.SimServerMessages.ResetResponse(frame=runtime_frame)
 
     def Step(self, request, context):
         logger.debug(f"Received Step request with timestamp_ns={request.timestamp_ns}")
@@ -70,13 +70,13 @@ class EsminiService(BaseSimServer):
         ctrl_cmd = request.ctrl_cmd
         timestamp_ns = request.timestamp_ns
         try:
-            objects = self._esmini.step(ctrl_cmd, timestamp_ns)
+            runtime_frame = self._esmini.step(ctrl_cmd, timestamp_ns)
         except RuntimeError as e:
             logger.error(f"Failed to step Esmini: {e}")
             context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             context.set_details(f"Failed to step Esmini: {e}")
             return sim_server_pb2.SimServerMessages.StepResponse()
-        return sim_server_pb2.SimServerMessages.StepResponse(objects=objects)
+        return sim_server_pb2.SimServerMessages.StepResponse(frame=runtime_frame)
 
     def Stop(self, request, context):
         logger.debug(f"Received Stop request from client: {context.peer()}")

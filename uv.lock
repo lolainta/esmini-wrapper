@@ -88,7 +88,7 @@ wheels = [
 [[package]]
 name = "pisa-api"
 version = "0.2.0"
-source = { git = "https://github.com/pisa-hut/pisa-api.git#959da70b74a55ccd0b17ef248916f8728e28c7e2" }
+source = { git = "https://github.com/pisa-hut/pisa-api.git#06762248e2f35bc4075fa3cd2c11b1d32ecd85db" }
 dependencies = [
     { name = "grpcio" },
     { name = "protobuf" },
