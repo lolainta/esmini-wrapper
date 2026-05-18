@@ -4,18 +4,13 @@ version = "0.1.0"
 description = "An esmini wrapper for SBSVS"
 readme = "README.md"
 requires-python = "==3.10.*"
-dependencies = [
-    "pisa-api>=0.2.0"
-]
+dependencies = ["pisa-api>=0.2.0"]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.6",
-]
+dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [tool.uv.sources]
-pisa-api = { git = "https://github.com/pisa-hut/pisa-api.git", branch = "feat/server-wrapping" }
+pisa-api = { git = "https://github.com/pisa-hut/pisa-api.git" }
 
 [tool.ruff]
 line-length = 100
